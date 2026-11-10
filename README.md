@@ -28,3 +28,25 @@ Hệ thống áp dụng ba mẫu thiết kế Factory, Singleton và Facade đ�
 - **Lợi ích:** Đơn giản hóa việc điều khiển hệ thống, giúp client không cần gọi riêng từng thiết bị.
 
 ## 3. Một hạn chế của thiết kế
+
+Singleton sử dụng trạng thái dùng chung trong toàn bộ ứng dụng, có thể gây khó khăn cho việc kiểm thử độc lập và quản lý sự phụ thuộc giữa các thành phần.
+
+Ngoài ra, khi bổ sung một loại thiết bị mới, DeviceFactory cần được cập nhật để hỗ trợ khởi tạo loại thiết bị đó.
+
+## 4. Trả lời câu hỏi Phần G
+
+**1. Factory đang che giấu quyết định thiết kế nào?**
+
+Che giấu ánh xạ từ chuỗi loại thiết bị sang lớp triển khai cụ thể, cách gọi constructor và logic kiểm tra loại không hợp lệ. Client nhận `IDevice`, không cần biết nhánh `new SmartLight`, `new SmartFan`, `new SmartDoor`.
+
+**2. Singleton bảo đảm điều gì, nhưng tạo ra rủi ro nào?**
+
+Bảo đảm các lần gọi `HomeConfiguration.Instance` trong một tiến trình sử dụng cùng một đối tượng (với cách cài đặt bình thường), giúp thống nhất cấu hình. Rủi ro là trạng thái dùng chung, phụ thuộc toàn cục, test dễ ảnh hưởng lẫn nhau, khó thay thế bằng mock và khó chạy song song.
+
+**3. Facade khác Factory ở mục đích chính như thế nào?**
+
+Factory phục vụ **khởi tạo đối tượng**; Facade phục vụ **điều phối thao tác giữa các đối tượng đã tồn tại** theo quy trình mức cao. Facade không thay thế thiết bị hoặc Factory.
+
+**4. Nếu bỏ SmartHomeFacade, client sẽ phải biết thêm chi tiết gì?**
+
+Client phải giữ tham chiếu `IDevice` của đèn/quạt, `ILockable` của cửa; gọi `TurnOff/Lock/TurnOn` đúng thứ tự cho mỗi chế độ; tự truy cập cấu hình và in mức sáng. Logic sẽ bị lặp trong các giao diện/client khác nhau.

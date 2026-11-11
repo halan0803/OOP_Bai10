@@ -5,6 +5,7 @@ Họ tên: Trần Thị Hà Lan
 
 using System;
 using System.IO;
+using System.Threading;
 namespace SmartHomeMini
 {
     public static class Program
@@ -36,6 +37,8 @@ namespace SmartHomeMini
             Run("T5", "GoToSleep sets states and prints light level", TestGoToSleep);
             Run("T6", "Factory ignores case and extra spaces", TestFactoryCaseInsensitive);
             Run("T7", "Only the door can lock and unlock", TestDoorLockable);
+            Run("T8", "Factory rejects null/empty type and name", TestFactoryNullOrEmpty);
+            Run("T9", "Singleton is shared across multiple threads", TestSingletonMultithread);
 
             Console.WriteLine();
             Console.WriteLine($"RESULT: {passed} passed, {failed} failed.");
@@ -214,5 +217,85 @@ namespace SmartHomeMini
             lockable.Unlock();
             Assert(!concreteDoor.IsLocked, "Unlock() did not unlock the door");
         }
+        // T8: Kiểm tra đầu vào null, rỗng và chỉ chứa khoảng trắng
+        private static void TestFactoryNullOrEmpty()
+        {
+            string[] invalidValues = { null, "", "   " };
+            string[] deviceTypes = { "light", "fan", "door" };
+
+            foreach (string invalid in invalidValues)
+            {
+                ExpectArgumentException(
+                    () => DeviceFactory.Create(invalid, "Test device"),
+                    "Factory must reject a null/empty device type"
+                );
+
+                foreach (string type in deviceTypes)
+                {
+                    ExpectArgumentException(
+                        () => DeviceFactory.Create(type, invalid),
+                        "Factory must reject a null/empty name for " + type
+                    );
+                }
+            }
+        }
+
+        // Kiểm tra một thao tác có phát sinh ArgumentException hay không
+        private static void ExpectArgumentException(Action action, string message)
+        {
+            try
+            {
+                action();
+            }
+            catch (ArgumentException)
+            {
+                return; 
+            }
+
+            throw new Exception(message);
+        }
+
+        // T9: Nhiều luồng truy cập Singleton phải nhận cùng một đối tượng
+        private static void TestSingletonMultithread()
+        {
+            const int threadCount = 10;
+            HomeConfiguration[] instances = new HomeConfiguration[threadCount];
+            Thread[] threads = new Thread[threadCount];
+            ManualResetEventSlim startSignal = new ManualResetEventSlim(false);
+
+            // Khởi tạo các luồng và cho cùng chờ tín hiệu bắt đầu
+            for (int i = 0; i < threadCount; i++)
+            {
+                int index = i;
+                threads[i] = new Thread(() =>
+                {
+                    startSignal.Wait();
+                    instances[index] = HomeConfiguration.Instance;
+                });
+                threads[i].Start();
+            }
+
+            // Cho tất cả các luồng bắt đầu truy cập Singleton
+            startSignal.Set();
+
+            // Chờ các luồng hoàn thành trước khi kiểm tra
+            foreach (Thread thread in threads)
+            {
+                thread.Join();
+            }
+            startSignal.Dispose();
+
+            HomeConfiguration first = instances[0];
+            Assert(first != null, "Singleton instance must not be null");
+
+            for (int i = 1; i < instances.Length; i++)
+            {
+                Assert(
+                    ReferenceEquals(first, instances[i]),
+                    "Threads did not receive the same Singleton instance"
+                );
+            }
+        }
+
     }
 }
